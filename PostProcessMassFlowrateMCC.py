@@ -25,7 +25,9 @@ class data_post_processing:
         self.orifice_size = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28]
         self.dem_mass_flow_vals = {}
 
-    def get_csv_file_list(self):        # Default path is current directory
+    def get_csv_file_list(self, path = r'C:\Users\Graphite\PycharmProjects\GranuFlowDigitalTwin\DEM_data'):        # Default path is current directory
+
+        path = self.path
 
         file_list = [f for f in listdir(self.path) if isfile(join(self.path, f))]
         verboseprint(file_list)
@@ -68,6 +70,11 @@ class data_post_processing:
         plt.xlabel("Time (sec)")
         plt.ylabel("Mass Leaving GranuFlow Tube (Kg)")
         plt.legend()
+        plt.grid()
+        plt.title('Mass Leaving the GranuFlow Tube')
+        # fig = plt.gcf()
+        # fig.set_size_inches(19.20, 10.80)
+        plt.savefig('MassLeavingGFDigitalTwin.png', dpi=100)
         plt.show()
 
     def save_csv_file(self):  # TODO: Get this working.
@@ -89,6 +96,9 @@ class data_post_processing:
         upperbound = self.totalmassintube*upperbound
 
         for key, value in self.d.items():
+
+            self.lr_rvalue = {}
+            self.lr_gradient = {}
 
             values = np.array(value)
             orifice_size = int(key)
@@ -112,9 +122,9 @@ class data_post_processing:
                     self.lr_gradient[i] = gradient*1000  # x1000 is to convert from kg to g.
                     self.lr_rvalue[i] = r_value  # R squared value.
 
-                max_value = max(self.lr_gradient.values())  # Find max r squared (or gradient) value for eqn with best fit.
+                max_value = max(self.lr_rvalue.values())  # Find max r squared (or gradient) value for eqn with best fit.
 
-                for key, value in self.lr_gradient.items():
+                for key, value in self.lr_rvalue.items():
                     if value == max_value:
                         index = key
                         self.dem_mass_flow_vals[orifice_size] = [self.lr_gradient[index]]
@@ -123,6 +133,8 @@ class data_post_processing:
         print(self.dem_mass_flow_vals)
 
     def beverloo_law_comparison(self):
+
+        # Beverloo Law
 
         # 0.5 mm Particles
         # c = 0.58                # c and k are empirical constants in the Beverloo law.
@@ -143,21 +155,40 @@ class data_post_processing:
             d_zero = self.orifice_size[i]  # Orifice size (m)
             beverloo_mass_flow_rate = c_plus_dens*sqrtg*(d_zero-(k*d_particle))**(5/2)  # Beverloo Law eqn g/s
 
-            print(beverloo_mass_flow_rate)
+            beverloo_mass_flow_rate = beverloo_mass_flow_rate**(2/5)
 
-            plt.scatter(self.orifice_size[i], beverloo_mass_flow_rate, color='b')
+            if i == 0:
+                plt.scatter(self.orifice_size[i], beverloo_mass_flow_rate, color='b', label='Beverloo Law')
+            else:
+                plt.scatter(self.orifice_size[i], beverloo_mass_flow_rate, color='b')
 
         for key, value in self.dem_mass_flow_vals.items():
 
             orifice_size = key
             dem_mass_flow_rate = value
 
-            plt.scatter(orifice_size, dem_mass_flow_rate, marker='x', color='r')
+            dem_mass_flow_rate = dem_mass_flow_rate[0]**(2/5)
 
-        plt.scatter([2, 4, 8, 12, 18, 22, 28], [0, 0, 4.19, 14.27, 46.13, 81.01, 159.94], marker='v', color='g')
+            if key == 2:
+                plt.scatter(orifice_size, dem_mass_flow_rate, marker='x', color='r', label='Digital Twin')
+            else:
+                plt.scatter(orifice_size, dem_mass_flow_rate, marker='x', color='r')
+
+        # Real Data
+
+        y = np.power([0, 0, 4.19, 14.27, 46.13, 81.01, 159.94], 2/5)
+        print(y)
+
+        plt.scatter([2, 4, 8, 12, 18, 22, 28], y, marker='v', color='g', label='Real GranuFlow')
 
         plt.xlabel("Orifice size (mm)")
-        plt.ylabel("Mass Flow Rate (g/sec)")
+        plt.ylabel(r"$Mass Flow Rate^{(\frac{2}{5})}$ $(g/sec)^{(\frac{2}{5})}$")
+        plt.legend()
+        plt.grid()
+        plt.title('Mass Flow Rate Comparision between Digital Twin, Beverloo Law and Real GranuFlow Data')
+        # fig = plt.gcf()
+        # fig.set_size_inches(19.20, 10.80)
+        plt.savefig('Flowratescomparison DEM_BeverlooLaw_RealGF.png', dpi=100)
         plt.show()
 
 
